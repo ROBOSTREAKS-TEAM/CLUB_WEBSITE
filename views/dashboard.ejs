@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Robostreaks CMS & Inventory</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg-dark: #0d1117; --bg-card: #161b22; --border: #30363d; --accent: #58a6ff; --text-main: #c9d1d9; --success: #238636; --danger: #da3633; --warning: #d29922; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar */
+        .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+        .brand { padding: 20px; font-size: 1.2rem; font-weight: bold; color: var(--accent); border-bottom: 1px solid var(--border); }
+        .nav-item { padding: 12px 20px; cursor: pointer; transition: 0.2s; border-left: 3px solid transparent; color: #8b949e; }
+        .nav-item:hover { background-color: #21262d; color: white; }
+        .nav-item.active { background-color: #21262d; border-left: 3px solid var(--accent); color: white; font-weight: bold; }
+        .nav-group-title { padding: 15px 20px 5px; font-size: 0.75rem; color: #6e7681; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* Layout */
+        .panel { display: none; height: 100%; flex-direction: column; }
+        .panel.active { display: flex; }
+        .top-bar { padding: 15px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; min-height: 60px; }
+        .content-area { flex: 1; padding: 30px; overflow-y: auto; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+
+        /* Components */
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; transition: 0.2s; position: relative; display: flex; flex-direction: column; }
+        .card-img { width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 10px; background: #21262d; }
+        .card-title { font-weight: bold; color: white; margin-bottom: 5px; font-size: 1.1rem; }
+        .card-actions { display: flex; gap: 10px; margin-top: auto; }
+
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 0.85rem; flex: 1; }
+        .btn-primary { background: var(--success); color: white; }
+        .btn-edit { background: #1f6feb; color: white; }
+        .btn-delete { background: var(--danger); color: white; }
+        .btn-warn { background: var(--warning); color: black; }
+        .btn-icon { background: transparent; color: #8b949e; border: 1px solid var(--border); padding: 5px 8px; flex: unset; }
+        .btn-icon:hover { color: white; border-color: white; }
+        .add-card { border: 2px dashed var(--border); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; min-height: 200px; color: var(--accent); font-weight: bold; flex-direction: column; gap: 10px; }
+        
+        /* Notifications */
+        .notification-box { background: rgba(210, 153, 34, 0.15); border: 1px solid var(--warning); padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        .notification-icon { color: var(--warning); font-size: 1.5rem; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--bg-card); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #21262d; color: white; font-size: 0.9rem; text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; color: #8b949e; font-size: 0.85rem; font-weight: 600; text-transform: capitalize; }
+        .form-input { width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 14px; }
+        .form-input:focus { border-color: var(--accent); outline: none; }
+        textarea.form-input { resize: vertical; line-height: 1.5; min-height: 80px; }
+        select.form-input { cursor: pointer; }
+        
+        /* Nested Styles */
+        .nested-group { border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; background: rgba(255,255,255,0.02); position: relative; }
+        .btn-remove-nested { position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--danger); cursor: pointer; }
+        .btn-add-nested { background: var(--bg-card); border: 1px dashed var(--border); color: var(--accent); width: 100%; padding: 10px; border-radius: 6px; cursor: pointer; }
+        
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: #1c2128; width: 800px; max-height: 90vh; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; font-weight: bold; font-size: 1.2rem; }
+        .modal-body { overflow-y: auto; flex: 1; padding: 10px 0; }
+        .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 15px; }
+        
+        /* Utility */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand">⚡ Robostreaks CMS</div>
+        <div class="nav-group-title">Website Content</div>
+        <div class="nav-item active" onclick="switchPanel('cms', 'about')">About</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'contact')">Contact</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'footer')">Footer</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'achievements')">Achievements</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'alumni')">Alumni</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'channels')">Channels</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'events')">Events</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'gallery')">Gallery</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'members')">Members</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'softwares')">Softwares</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'sponsors')">Sponsors</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'teams')">Teams</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'timeline')">Timeline</div>
+        <div class="nav-item" onclick="switchPanel('cms', 'tutorials')">Tutorials</div>
+        
+        <div class="nav-group-title">Club Management</div>
+        <div class="nav-item" onclick="switchPanel('inventory', null)">📦 Inventory</div>
+        <div class="nav-item" onclick="switchPanel('logs', null)">📜 History Logs</div>
+        
+        <% if (user.role === 'superadmin') { %>
+            <div class="nav-item" onclick="switchPanel('users', null)">👥 Admin Users</div>
+        <% } %>
+        
+        <a href="/admin/logout" style="margin-top:auto; padding:15px; color:var(--danger); text-decoration:none;">Logout</a>
+    </div>
+
+    <div id="cmsPanel" class="main-content panel active">
+        <div class="top-bar">
+            <div class="page-title" id="pageTitle">Select Category</div>
+            <button class="btn btn-primary" style="flex:0 0 150px" onclick="saveToDatabase()">Push Live</button>
+        </div>
+        <div class="content-area">
+            <div class="grid-container" id="gridContainer"></div>
+        </div>
+    </div>
+
+    <div id="inventoryPanel" class="main-content panel">
+        <div class="top-bar"><div class="page-title">Component Inventory</div></div>
+        <div class="content-area">
+            <div id="notificationArea"></div>
+            <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 20px;">
+                <div>
+                    <div style="border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px;" class="flex-between">
+                        <h3 style="margin:0;">Available Components</h3>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" placeholder="Search..." onkeyup="filterInventory(this.value)" style="padding:8px; border-radius:6px; font-size:0.9rem; background:transparent; border:1px solid var(--border); color:white; width:200px;">
+                            <button class="btn btn-primary" style="flex:0 0 120px" onclick="openAddModal()">+ Add Stock</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead><tr><th>Item Details</th><th>Stock</th><th>Action</th></tr></thead>
+                        <tbody id="inventoryTableBody"></tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3 style="border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px;">Issuance Requests</h3>
+                    <div id="requestsArea"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="logsPanel" class="main-content panel">
+        <div class="top-bar"><div class="page-title">Transaction History</div></div>
+        <div class="content-area">
+            <div class="card" style="min-height: 80vh;">
+                <input type="text" placeholder="Search Logs..." onkeyup="filterLogs(this.value)" style="margin-bottom:15px; padding:10px; width:100%; background:var(--bg-dark); border:1px solid var(--border); color:white; border-radius:6px;">
+                <table>
+                    <thead><tr><th>Date</th><th>Issued To</th><th>Component</th><th>Status</th><th>Returned</th></tr></thead>
+                    <tbody id="logsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <% if (user.role === 'superadmin') { %>
+    <div id="usersPanel" class="main-content panel">
+        <div class="top-bar"><div class="page-title">Manage Admin Access</div></div>
+        <div class="content-area">
+            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px;">
+                <div class="card">
+                    <h3 style="color:var(--accent); margin-bottom:15px;">Add New Admin</h3>
+                    <form action="/admin/create-admin" method="POST">
+                        <div class="form-group"><label class="form-label">Username</label><input type="text" name="username" required class="form-input"></div>
+                        <div class="form-group"><label class="form-label">Password</label><input type="password" name="password" required class="form-input"></div>
+                        <div class="form-group"><label class="form-label">Role</label><select name="role" class="form-input"><option value="admin">Admin</option><option value="superadmin">Super Admin</option></select></div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Create User</button>
+                    </form>
+                </div>
+                <div class="card">
+                    <h3 style="color:white; margin-bottom:15px;">Existing Admins</h3>
+                    <table>
+                        <thead><tr><th>Username</th><th>Role</th><th>Action</th></tr></thead>
+                        <tbody>
+                            <% users.forEach(u => { %>
+                                <tr>
+                                    <td><%= u.username %></td>
+                                    <td><span style="padding:2px 8px; border-radius:4px; font-size:0.8rem; border:1px solid #30363d; color:<%= u.role === 'superadmin' ? '#58a6ff' : 'white' %>"><%= u.role %></span></td>
+                                    <td>
+                                        <% if(u.username !== user.username) { %>
+                                            <form action="/admin/delete-admin" method="POST" onsubmit="return confirm('Delete this user?');"><input type="hidden" name="userId" value="<%= u._id %>"><button class="btn btn-icon" style="color:#da3633;"><i class="fas fa-trash"></i></button></form>
+                                        <% } else { %><span style="color:#8b949e; font-size:0.8rem;">(You)</span><% } %>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <div id="stockModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1001;">
+        <div style="background:var(--bg-card); padding:30px; border-radius:10px; width:600px; border:1px solid var(--border); max-height:90vh; overflow-y:auto;">
+            <h3 id="stockModalTitle" style="color:var(--accent); margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">Manage Component</h3>
+            <form action="/admin/inventory/add" method="POST">
+                <input type="hidden" name="id" id="stockId">
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div class="form-group" style="margin:0;"><label class="form-label">Name</label><input type="text" name="name" id="stockName" required class="form-input"></div>
+                    <div class="form-group" style="margin:0;"><label class="form-label">ID / Number</label><input type="text" name="componentNumber" id="stockNumber" class="form-input"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div class="form-group" style="margin:0;"><label class="form-label">Category</label><select name="category" id="stockCategory" class="form-input"><option value="Sensors">Sensors</option><option value="Motors">Motors</option><option value="Microcontrollers">Microcontrollers</option><option value="Boards">Dev Boards</option><option value="Tools">Tools</option><option value="Drones">Drone Parts</option><option value="Others">Others</option></select></div>
+                    <div class="form-group" style="margin:0;"><label class="form-label">Total Qty</label><input type="number" name="totalStock" id="stockTotal" required class="form-input"></div>
+                </div>
+                <div class="form-group" style="margin-bottom:15px;"><label class="form-label">Description</label><textarea name="description" id="stockDesc" rows="2" class="form-input"></textarea></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div class="form-group" style="margin:0;"><label class="form-label">Status</label><select name="stockStatus" id="stockStatus" class="form-input"><option value="Available">Available</option><option value="Club Use Only">Club Use Only</option></select></div>
+                    <div class="form-group" style="margin:0;"><label class="form-label">Price (₹)</label><input type="number" name="price" id="stockPrice" class="form-input"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div class="form-group" style="margin:0;"><label class="form-label">Datasheet</label><input type="text" name="datasheet" id="stockDatasheet" class="form-input"></div>
+                    <div class="form-group" style="margin:0;"><label class="form-label">Image URL</label><input type="text" name="image" id="stockImage" class="form-input"></div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="document.getElementById('stockModal').style.display='none'" class="btn" style="background:transparent; border:1px solid #30363d; color:#8b949e;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save / Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="requestModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1001;">
+        <div style="background:var(--bg-card); padding:30px; border-radius:10px; width:400px; border:1px solid var(--border);">
+            <h3>Issue Component</h3>
+            <form action="/admin/inventory/request" method="POST">
+                <input type="hidden" name="componentId" id="reqCompId">
+                <p id="reqCompName" style="color:var(--accent); margin-bottom:15px;"></p>
+                <div style="margin-bottom:15px; display:flex; gap:10px;">
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:5px;"><input type="radio" name="usageType" value="individual" checked onchange="toggleIssueType('individual')"> Student</label>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:5px;"><input type="radio" name="usageType" value="project" onchange="toggleIssueType('project')"> Club Project</label>
+                </div>
+                <div id="individualFields">
+                    <input type="text" name="studentName" placeholder="Student Name" class="form-input" style="margin-bottom:10px;">
+                    <input type="text" name="rollNumber" placeholder="Roll Number" class="form-input" style="margin-bottom:10px;">
+                </div>
+                <div id="projectFields" style="display:none;">
+                    <input type="text" name="projectName" placeholder="Project Name" class="form-input" style="margin-bottom:10px;">
+                </div>
+                <input type="number" name="days" placeholder="Days" value="7" required class="form-input" style="margin-bottom:20px;">
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="document.getElementById('requestModal').style.display='none'" class="btn" style="background:transparent; border:1px solid #30363d; color:#8b949e;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header"><span id="modalTitle">Edit Item</span><i class="fas fa-times" style="cursor: pointer;" onclick="closeModal()"></i></div>
+            <div class="modal-body" id="modalForm"></div>
+            <div class="modal-footer">
+                <button class="btn btn-delete" style="flex:0 0 100px" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-edit" style="flex:0 0 100px" onclick="saveModalData()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const singletonCategories = ['about', 'contact', 'footer'];
+        const defaultSchemas = {
+            events: { title: "", date: "", description: "", image: "", link: "" },
+            members: { name: "", role: "", department: "", batch: "", image: "", linkedin: "", github: "" },
+            achievement: { title: "", description: "", image: "", date: "", position: "" },
+            gallery: { image: "", caption: "", category: "Tech" },
+            timeline: { year: "", title: "", description: "" },
+            tutorials: { title: "", link: "", description: "", category: "" },
+            sponsors: { name: "", logo: "", website: "" },
+            softwares: { name: "", description: "", link: "", icon: "" },
+            channels: { name: "", link: "", subscribers: "" },
+            alumni: { name: "", batch: "", role: "", current_company: "", linkedin: "" }
+        };
+        const fieldOptions = {
+            status: ["upcoming", "ongoing", "completed", "current", "alumni"],
+            department: ["CSE", "ECE", "ME", "EE", "CE", "Other"],
+            category: ["Competition", "Workshop", "Fun", "Tech", "Team"],
+            position: ["1st", "2nd", "3rd", "Finalist", "Participant", "Winner", "Runner-Up"],
+            batch: (function(){ const b=[]; const s=2009; const e=new Date().getFullYear()+4; for(let y=s;y<=e;y++)b.push(`${y}-${y+4}`); b.push("Alumni"); return b.reverse(); })(),
+            role: ["President", "Vice President", "Secretary", "Technical Lead", "Management Lead", "Media Lead", "Creative Lead", "Web Developer", "App Developer", "Embedded Developer", "Drone Pilot", "Member", "Coordinator", "Volunteer", "Founder", "Alumni"]
+        };
+        const objectTemplates = { images: { url: "", caption: "" }, socialLinks: "" };
+
+        // --- GLOBAL STATE ---
+        let currentCategory = '';
+        let currentData = [];
+        let editIndex = -1;
+        let componentMap = {};
+        let inventoryList = [];
+        let logsList = [];
+
+        // --- MEMORY ---
+        window.onload = function() {
+            const lastPanel = localStorage.getItem('activePanel') || 'cms';
+            const lastCategory = localStorage.getItem('activeCategory') || 'about';
+            switchPanel(lastPanel, lastCategory);
+        };
+
+        function switchPanel(panelName, category) {
+            localStorage.setItem('activePanel', panelName);
+            if(category) localStorage.setItem('activeCategory', category);
+
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            const items = document.querySelectorAll('.nav-item');
+            items.forEach(item => {
+                if (panelName === 'inventory' && item.innerText.includes('Inventory')) item.classList.add('active');
+                else if (panelName === 'logs' && item.innerText.includes('Logs')) item.classList.add('active');
+                else if (panelName === 'users' && item.innerText.includes('Users')) item.classList.add('active');
+                else if (panelName === 'cms' && item.innerText.toLowerCase() === category) item.classList.add('active');
+            });
+
+            if(panelName === 'cms') {
+                document.getElementById('cmsPanel').classList.add('active');
+                loadCategory(category || 'about'); 
+            } else if (panelName === 'inventory') {
+                document.getElementById('inventoryPanel').classList.add('active');
+                loadInventory();
+            } else if (panelName === 'logs') {
+                document.getElementById('logsPanel').classList.add('active');
+                loadLogs();
+            } else if (panelName === 'users') {
+                document.getElementById('usersPanel').classList.add('active');
+            }
+        }
+
+        // --- LOGS ---
+        async function loadLogs() {
+            try {
+                const res = await fetch('/admin/inventory/logs');
+                const data = await res.json();
+                logsList = data;
+                renderLogsTable(logsList);
+            } catch(e) { console.error(e); }
+        }
+
+        function renderLogsTable(logs) {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = '';
+            if(logs.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No logs found.</td></tr>'; return; }
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                const date = new Date(log.issueDate).toLocaleDateString();
+                const returnDate = log.returnDate ? new Date(log.returnDate).toLocaleDateString() : '-';
+                let userDisplay = (log.usageType === 'project') ? `<span style="color:var(--accent)">PROJECT: ${log.projectName}</span>` : `${log.studentName} <br><small style="color:#8b949e">${log.rollNumber}</small>`;
+                let statusColor = '#d29922'; let statusText = log.status.toUpperCase();
+                if(log.status === 'approved') statusColor = '#238636'; 
+                if(log.status === 'returned') statusColor = '#58a6ff'; 
+                if(log.status === 'rejected') statusColor = '#da3633';
+                if(log.status === 'damaged') { statusColor = '#da3633'; statusText = 'DAMAGED'; }
+                tr.innerHTML = `<td>${date}</td><td>${userDisplay}</td><td>${log.componentName}</td><td><span style="padding:2px 8px; border-radius:4px; font-size:0.8rem; background:${statusColor}20; color:${statusColor}; border:1px solid ${statusColor}">${statusText}</span></td><td>${returnDate}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterLogs(term) {
+            const lower = term.toLowerCase();
+            renderLogsTable(logsList.filter(l => l.studentName.toLowerCase().includes(lower) || l.componentName.toLowerCase().includes(lower)));
+        }
+
+        // --- INVENTORY ---
+        async function loadInventory() {
+            try {
+                const res = await fetch('/admin/inventory/dashboard');
+                const data = await res.json();
+                
+                const notifyArea = document.getElementById('notificationArea');
+                notifyArea.innerHTML = '';
+                data.notifications.forEach(note => {
+                    notifyArea.innerHTML += `<div class="notification-box"><i class="fas fa-exclamation-triangle notification-icon"></i> <div><strong>URGENT:</strong> ${note.message}<br><small>${new Date(note.date).toDateString()}</small></div></div>`;
+                });
+
+                const reqArea = document.getElementById('requestsArea');
+                reqArea.innerHTML = '';
+                data.transactions.forEach(trans => {
+                    let statusBadge = `<span class="status-badge status-${trans.status}">${trans.status}</span>`;
+                    if(trans.status === 'approved' && new Date(trans.dueDate) < new Date()) statusBadge = `<span class="status-badge status-overdue">OVERDUE</span>`;
+                    else if(trans.status === 'approved') statusBadge = `<span style="padding:2px 6px; border-radius:4px; font-size:0.75rem; background:#238636; color:white;">Approved</span>`;
+
+                    let subText = (trans.usageType === 'project') ? `<strong style="color:var(--accent)">PROJECT: ${trans.projectName}</strong>` : `${trans.studentName} (${trans.rollNumber})`;
+
+                    let actions = '';
+                    if (trans.status === 'pending') {
+                        actions = `<div style="margin-top:8px; display:flex; gap:5px;"><form action="/admin/inventory/approve" method="POST" style="flex:1"><input type="hidden" name="transactionId" value="${trans._id}"><input type="hidden" name="action" value="approve"><button class="btn btn-primary" style="width:100%">Approve</button></form><form action="/admin/inventory/approve" method="POST" style="flex:1"><input type="hidden" name="transactionId" value="${trans._id}"><input type="hidden" name="action" value="reject"><button class="btn btn-delete" style="width:100%">Reject</button></form></div>`;
+                    } else if (trans.status === 'approved') {
+                        actions = `<div style="margin-top:8px; display:flex; gap:5px;"><form action="/admin/inventory/return" method="POST" style="flex:1" onsubmit="return confirm('Condition: GOOD?');"><input type="hidden" name="transactionId" value="${trans._id}"><input type="hidden" name="condition" value="Good"><button class="btn btn-primary" style="width:100%; font-size:0.7rem;">✅ Return</button></form><form action="/admin/inventory/return" method="POST" style="flex:1" onsubmit="return confirm('WARNING: Marking DAMAGED?');"><input type="hidden" name="transactionId" value="${trans._id}"><input type="hidden" name="condition" value="Damaged"><button class="btn btn-delete" style="width:100%; font-size:0.7rem;">⚠️ Damaged</button></form></div>`;
+                    }
+
+                    const card = document.createElement('div'); card.className = 'card'; card.style.marginBottom = '10px';
+                    card.innerHTML = `<div style="display:flex; justify-content:space-between;"><strong>${trans.componentName}</strong>${statusBadge}</div><div style="font-size:0.8rem; color:#8b949e; margin-top:5px;">${subText}<br>Due: ${new Date(trans.dueDate).toLocaleDateString()}</div>${actions}`;
+                    reqArea.appendChild(card);
+                });
+
+                inventoryList = data.components;
+                componentMap = {};
+                inventoryList.forEach(c => componentMap[c._id] = c);
+                renderInventoryTable(inventoryList);
+            } catch(e) {}
+        }
+
+        function renderInventoryTable(components) {
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+            components.forEach(comp => {
+                const tr = document.createElement('tr');
+                const desc = comp.description ? `<br><small style="color:#8b949e">${comp.description}</small>` : '';
+                const link = comp.datasheet ? `<a href="${comp.datasheet}" target="_blank" style="color:var(--accent); font-size:0.8rem; margin-left:5px;"><i class="fas fa-file-pdf"></i> PDF</a>` : '';
+                
+                const isClubUse = comp.stockStatus === 'Club Use Only';
+                const statusColor = isClubUse ? '#d29922' : '#238636';
+                let availabilityText = `<strong style="color:${statusColor}">${comp.availableStock}</strong> / ${comp.totalStock}`;
+                
+                // --- VISUAL CHANGE FOR CLUB USE ---
+                if(isClubUse) availabilityText = `<span style="color:#d29922; font-weight:bold;">Club Use</span>`;
+
+                // --- DISABLE ISSUE BUTTON ---
+                const disableIssue = isClubUse || comp.availableStock < 1;
+                const issueStyle = disableIssue ? 'background:#30363d; color:#8b949e; cursor:not-allowed;' : '';
+                const issueTitle = isClubUse ? 'Internal Use Only' : 'Issue';
+
+                tr.innerHTML = `
+                    <td><div style="font-weight:bold; color:white;">${comp.name} <small style="color:#8b949e;">[${comp.componentNumber || ''}]</small> ${link}</div><div style="font-size:0.75rem; color:#8b949e;">${comp.category} ${desc}</div></td>
+                    <td>${availabilityText}</td>
+                    <td style="display:flex; gap:10px;">
+                        <button class="btn btn-icon" onclick="openEditModal('${comp._id}')" title="Edit"><i class="fas fa-edit" style="color: #58a6ff;"></i></button>
+                        <form action="/admin/inventory/delete" method="POST" onsubmit="return confirm('Delete ${comp.name}?');" style="margin:0;"><input type="hidden" name="id" value="${comp._id}"><button type="submit" class="btn btn-icon" title="Delete"><i class="fas fa-trash" style="color: #da3633;"></i></button></form>
+                        <button class="btn btn-primary" onclick="openRequestModal('${comp._id}', '${comp.name}')" ${disableIssue ? 'disabled' : ''} style="${issueStyle}" title="${issueTitle}"><i class="fas fa-hand-holding"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterInventory(term) {
+            const lower = term.toLowerCase();
+            renderInventoryTable(inventoryList.filter(c => c.name.toLowerCase().includes(lower) || (c.componentNumber && c.componentNumber.toLowerCase().includes(lower))));
+        }
+
+        function openEditModal(id) {
+            const data = componentMap[id];
+            if(data) {
+                document.getElementById('stockModalTitle').innerText = "Edit Component";
+                document.getElementById('stockId').value = data._id;
+                document.getElementById('stockName').value = data.name;
+                document.getElementById('stockNumber').value = data.componentNumber || "";
+                document.getElementById('stockTotal').value = data.totalStock;
+                document.getElementById('stockCategory').value = data.category;
+                document.getElementById('stockDesc').value = data.description || "";
+                document.getElementById('stockStatus').value = data.stockStatus || "Available";
+                document.getElementById('stockPrice').value = data.price || "";
+                document.getElementById('stockDatasheet').value = data.datasheet || "";
+                document.getElementById('stockImage').value = data.image || "";
+                document.getElementById('stockLocation').value = data.location || "";
+                document.getElementById('stockModal').style.display = 'flex';
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('stockModalTitle').innerText = "Add New Component";
+            document.getElementById('stockId').value = "";
+            document.querySelector('#stockModal form').reset();
+            document.getElementById('stockModal').style.display = 'flex';
+        }
+
+        function openRequestModal(id, name) {
+            document.getElementById('reqCompId').value = id;
+            document.getElementById('reqCompName').innerText = "Issuing: " + name;
+            document.getElementById('requestModal').style.display = 'flex';
+        }
+
+        function toggleIssueType(type) {
+            if(type === 'project') {
+                document.getElementById('individualFields').style.display = 'none';
+                document.getElementById('projectFields').style.display = 'block';
+                document.getElementsByName('studentName')[0].removeAttribute('required');
+                document.getElementsByName('rollNumber')[0].removeAttribute('required');
+                document.getElementsByName('projectName')[0].setAttribute('required', 'true');
+            } else {
+                document.getElementById('individualFields').style.display = 'block';
+                document.getElementById('projectFields').style.display = 'none';
+                document.getElementsByName('studentName')[0].setAttribute('required', 'true');
+                document.getElementsByName('rollNumber')[0].setAttribute('required', 'true');
+                document.getElementsByName('projectName')[0].removeAttribute('required');
+            }
+        }
+
+        // --- CMS LOGIC ---
+        async function loadCategory(category) {
+            currentCategory = category;
+            document.getElementById('pageTitle').innerText = category;
+            try {
+                const res = await fetch('/admin/api/data/' + category);
+                let data = await res.json();
+                
+                // Schema Injection for Empty Lists
+                if (singletonCategories.includes(category) && (!data || (Array.isArray(data) && data.length === 0) || Object.keys(data).length === 0)) data = [{}];
+                else if (!Array.isArray(data)) {
+                    if (data && Object.keys(data).length === 0 && defaultSchemas[category]) {
+                        data = [defaultSchemas[category]]; // Use default schema if empty
+                    } else {
+                        data = [data]; 
+                    }
+                } else if (data.length === 0 && defaultSchemas[category]) {
+                    data = [defaultSchemas[category]]; // Use default if array empty
+                }
+
+                currentData = data;
+                renderGrid();
+            } catch (e) { alert("Error loading data."); }
+        }
+
+        function renderGrid() {
+            const container = document.getElementById('gridContainer'); container.innerHTML = '';
+            if (!singletonCategories.includes(currentCategory)) { const addCard = document.createElement('div'); addCard.className = 'card add-card'; addCard.innerHTML = '<i class="fas fa-plus-circle fa-3x"></i><span>Add New Item</span>'; addCard.onclick = () => openModal(-1); container.appendChild(addCard); }
+            currentData.forEach((item, index) => {
+                // If this is a schema template, skip rendering card but keep for "Add" reference (logic handled in openModal)
+                const isTemplate = item === defaultSchemas[currentCategory];
+                if(isTemplate && currentData.length === 1) return; // Don't show template card if it's the only one
+
+                const card = document.createElement('div'); card.className = 'card';
+                const keys = Object.keys(item); const titleKey = keys.find(k => /name|title|header|topic/i.test(k)) || keys[0]; const imgKey = keys.find(k => /img|image|photo/i.test(k));
+                let html = ''; if(item[imgKey] && typeof item[imgKey] === 'string') html += `<img src="${item[imgKey]}" class="card-img" onerror="this.style.display='none'">`;
+                html += `<div class="card-title">${item[titleKey] || 'Untitled'}</div>`;
+                if(item.id) html += `<div style="position:absolute; top:10px; right:10px; background:#21262d; padding:2px 8px; border-radius:10px; font-size:0.7rem; color:#8b949e">ID: ${item.id}</div>`;
+                html += `<div class="card-actions"><button class="btn btn-edit" onclick="openModal(${index})">Edit</button>`;
+                if (!singletonCategories.includes(currentCategory)) html += `<button class="btn btn-delete" onclick="deleteItem(${index})"><i class="fas fa-trash"></i></button>`;
+                html += `</div>`; card.innerHTML = html; container.appendChild(card);
+            });
+        }
+
+        function openModal(index) {
+            editIndex = index; const modal = document.getElementById('editModal'); const formContainer = document.getElementById('modalForm'); document.getElementById('modalTitle').innerText = index === -1 ? ("Add " + currentCategory) : "Edit Item"; formContainer.innerHTML = ''; modal.style.display = 'flex';
+            let schema = {}; 
+            
+            if (index > -1) {
+                schema = currentData[index];
+            } else {
+                // ADD NEW: Use Default Schema if available, else copy first item
+                if (defaultSchemas[currentCategory]) {
+                    schema = JSON.parse(JSON.stringify(defaultSchemas[currentCategory])); // Deep copy
+                } else if (currentData.length > 0) {
+                    const template = currentData[0];
+                    for(let key in template) { if(Array.isArray(template[key])) schema[key] = []; else if(typeof template[key] === 'object') schema[key] = {}; else schema[key] = ""; }
+                } else { schema = { id: 1, name: "" }; }
+                
+                if(!singletonCategories.includes(currentCategory)) {
+                    // Auto-increment ID logic
+                    const maxId = currentData.reduce((max, item) => (item.id && parseInt(item.id) > max ? parseInt(item.id) : max), 0);
+                    schema.id = maxId + 1;
+                }
+            }
+
+            Object.keys(schema).forEach(key => {
+                if (key === '_id' || key === 'createdAt' || key === 'updatedAt') return; const val = schema[key];
+                if (Array.isArray(val) && (val.length === 0 || typeof val[0] === 'object') && key !== 'history') {
+                    const groupDiv = document.createElement('div'); groupDiv.innerHTML = `<label class="form-label">${key}</label>`; const itemsContainer = document.createElement('div'); itemsContainer.id = `container_${key}`; val.forEach((subItem, subIdx) => itemsContainer.appendChild(createNestedItem(key, subIdx, subItem))); const addBtn = document.createElement('button'); addBtn.className = 'btn-add-nested'; addBtn.innerHTML = `+ Add to ${key}`; addBtn.onclick = () => itemsContainer.appendChild(createNestedItem(key, itemsContainer.children.length, objectTemplates[key] || { url: "", caption: "" })); groupDiv.appendChild(itemsContainer); groupDiv.appendChild(addBtn); formContainer.appendChild(groupDiv);
+                } else if (key === 'history' || (Array.isArray(val) && typeof val[0] === 'string')) {
+                    const div = document.createElement('div'); div.className = 'form-group'; div.innerHTML = `<label class="form-label">${key} (One paragraph per line)</label>`; const input = document.createElement('textarea'); input.className = 'form-input'; input.rows = 6; input.value = Array.isArray(val) ? val.join('\n\n') : val; input.dataset.type = 'paragraphs'; input.dataset.key = key; div.appendChild(input); formContainer.appendChild(div);
+                } else {
+                    const div = document.createElement('div'); div.className = 'form-group'; div.innerHTML = `<label class="form-label">${key}</label>`; let input;
+                    if (fieldOptions[key]) { input = document.createElement('select'); input.className = 'form-input'; if(!val) input.appendChild(new Option("-- Select --", "")); fieldOptions[key].forEach(optVal => { const opt = new Option(optVal, optVal); if (val === optVal) opt.selected = true; input.appendChild(opt); }); } 
+                    else if(key.toLowerCase().includes('date') && !key.toLowerCase().includes('update')) { input = document.createElement('input'); input.type = 'date'; input.className = 'form-input'; input.value = val || ""; } 
+                    else { input = document.createElement('input'); input.className = 'form-input'; input.value = val || ""; if (key === 'id') input.readOnly = true; if (typeof val === 'number') input.type = 'number'; }
+                    input.dataset.key = key; div.appendChild(input); formContainer.appendChild(div);
+                }
+            });
+        }
+
+        function createNestedItem(parentKey, index, data) {
+            const div = document.createElement('div'); div.className = 'nested-group'; div.dataset.parent = parentKey; const removeBtn = document.createElement('button'); removeBtn.className = 'btn-remove-nested'; removeBtn.innerHTML = '<i class="fas fa-times"></i>'; removeBtn.onclick = () => div.remove(); div.appendChild(removeBtn);
+            Object.keys(data).forEach(subKey => { const row = document.createElement('div'); row.style.marginBottom = '10px'; const label = document.createElement('label'); label.style.display = 'block'; label.style.fontSize = '0.75rem'; label.style.color = '#8b949e'; label.innerText = subKey; const input = document.createElement('input'); input.className = 'form-input nested-input'; input.value = data[subKey]; input.dataset.subkey = subKey; row.appendChild(label); row.appendChild(input); div.appendChild(row); }); return div;
+        }
+
+        function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+        function saveModalData() {
+            const formContainer = document.getElementById('modalForm'); const newItem = {};
+            formContainer.querySelectorAll(':scope > .form-group .form-input').forEach(input => { const key = input.dataset.key; let val = input.value; if (input.type === 'number') val = parseInt(val); if (input.dataset.type === 'paragraphs') val = val.split('\n').map(s => s.trim()).filter(s => s.length > 0); newItem[key] = val; });
+            formContainer.querySelectorAll('div[id^="container_"]').forEach(container => { const key = container.id.replace('container_', ''); const items = []; container.childNodes.forEach(childDiv => { if(childDiv.className !== 'nested-group') return; const subObj = {}; childDiv.querySelectorAll('.nested-input').forEach(subInp => { subObj[subInp.dataset.subkey] = subInp.value; }); items.push(subObj); }); newItem[key] = items; });
+            if (editIndex === -1) currentData.push(newItem); else currentData[editIndex] = { ...currentData[editIndex], ...newItem }; 
+            closeModal(); renderGrid();
+        }
+        function deleteItem(index) { if(confirm("Delete item?")) { currentData.splice(index, 1); renderGrid(); } }
+        async function saveToDatabase() { const btn = document.querySelector('#cmsPanel .btn-primary'); const originalText = btn.innerHTML; btn.innerHTML = 'Saving...'; try { await fetch('/admin/update-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: currentCategory, jsonData: JSON.stringify(currentData) }) }); alert("✅ Saved!"); } catch (e) { alert("Network Error"); } finally { btn.innerHTML = originalText; } }
+    </script>
+</body>
+</html>
